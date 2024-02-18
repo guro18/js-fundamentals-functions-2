@@ -78,11 +78,18 @@ function parseRequest(req) {
     body: null,
     query: null
   }
-
-  // call the other functions below as needed
-
+  const trimmedReq = req.trim()
+  if (trimmedReq.startsWith('GET')) {
+    request.method = 'GET'
+  } else if (trimmedReq.startsWith('POST')) {
+    request.method = 'POST'
+  }
   return request
 }
+
+console.log(parseRequest(rawPOSTRequest))
+// console.log(parseRequest(rawGETRequestComplex))
+// console.log(parseRequest(rawPOSTRequest))
 
 // 2. Create a function named parseHeader that accepts two parameters:
 // - a string for one header, and an object of current headers that must be augmented with the parsed header

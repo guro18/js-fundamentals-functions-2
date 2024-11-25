@@ -1,3 +1,6 @@
+/* eslint-disable no-useless-return */
+/* eslint-disable spaced-comment */
+/* eslint-disable prettier/prettier */
 // HERE ARE SOME EXAMPLES OF RAW HTTP REQUESTS (text)
 // WE ARE GOING TO WRITE A COLLECTION OF FUNCTIONS THAT PARSE THE HTTP REQUEST
 // AND CONVERTS IT ALL INTO A Javascript object
@@ -78,18 +81,72 @@ function parseRequest(req) {
     body: null,
     query: null
   }
-  const trimmedReq = req.trim()
+
+  let trimmedReq = req.trim()
+
+  //method
   if (trimmedReq.startsWith('GET')) {
     request.method = 'GET'
+    trimmedReq = trimmedReq.slice(3).trim()
   } else if (trimmedReq.startsWith('POST')) {
     request.method = 'POST'
+    trimmedReq = trimmedReq.slice(4).trim()
   }
+
+  //path
+  let pathString = ''
+  let indexCount = 0
+  for (let i = 0; i < trimmedReq.length; i++) {
+    if (trimmedReq[i] === ' ' || trimmedReq[i] ==='?') {
+      request.path = pathString
+      break;
+    } else {
+      pathString = pathString + trimmedReq[i]
+      indexCount = indexCount + 1
+    }
+  }
+  trimmedReq = trimmedReq.slice(indexCount).trim()
+
+  //query
+  if (trimmedReq.startsWith('?')) {
+    const lines = trimmedReq.split('\n')
+    const queryLine = lines.shift()
+    
+    const queryDict = Object.fromEntries(
+      queryLine
+        .substring(1, queryLine.indexOf(' '))
+        .split('&')
+        .map(param => param.split('='))
+    )
+
+    request.query = queryDict
+    trimmedReq = lines
+  } else {
+    trimmedReq = trimmedReq.split('\n').slice(1)
+  }
+
+
+  //headers
+  const headers = {}
+  let i = 0;
+
+  for (; i < trimmedReq.length; i++) {
+    const line = trimmedReq[i].trim()
+    if (line === '') break;
+    const [key, value] = line.split(':').map(str => str.trim())
+    if (key && value) headers[key] = value
+  }
+  request.headers = headers;
+  trimmedReq = trimmedReq.slice(i + 1).join('\n').trim()
+
+  //body
+  if (trimmedReq && trimmedReq.trim() !== '') {
+    const dict = JSON.parse(trimmedReq);
+    request.body = dict
+  }
+
   return request
 }
-
-console.log(parseRequest(rawPOSTRequest))
-// console.log(parseRequest(rawGETRequestComplex))
-// console.log(parseRequest(rawPOSTRequest))
 
 // 2. Create a function named parseHeader that accepts two parameters:
 // - a string for one header, and an object of current headers that must be augmented with the parsed header
@@ -99,7 +156,15 @@ console.log(parseRequest(rawPOSTRequest))
 // eg: parseHeader('Authorization: Bearer your_access_token', { Host: 'www.example.com' })
 //        => { Host: 'www.example.com', Authorization: 'Bearer your_access_token'}
 // eg: parseHeader('', { Host: 'www.example.com' }) => { Host: 'www.example.com' }
-function parseHeader(header, headers) {}
+function parseHeader(header, headers) {
+  if (header.trim() === '') return;
+
+  const [key, value] = header.split(':').map(str => str.trim());
+
+  if (key && value) {
+    headers[key] = value;
+  }
+}
 
 // 3. Create a function named parseBody that accepts one parameter:
 // - a string for the body
@@ -107,14 +172,35 @@ function parseHeader(header, headers) {}
 // search for JSON parsing
 // eg: parseBody('{"key1": "value1", "key2": "value2"}') => { key1: 'value1', key2: 'value2' }
 // eg: parseBody('') => null
-function parseBody(body) {}
+function parseBody(body) {
+  if (!body.trim()) return null;
+
+  try {
+    return JSON.parse(body);
+  } catch (error) {
+    return null;
+}
+}
 
 // 4. Create a function named extractQuery that accepts one parameter:
 // - a string for the full path
 // It must return the parsed query as a JavaScript object or null if no query ? is present
 // eg: extractQuery('/api/data/123?someValue=example') => { someValue: 'example' }
 // eg: extractQuery('/api/data/123') => null
-function extractQuery(path) {}
+function extractQuery(path) {
+  const queryIndex = path.indexOf('?');
+  if (queryIndex === -1) return null;
+
+  const queryString = path.slice(queryIndex + 1);
+
+  const queryObject = Object.fromEntries(
+    queryString
+      .split('&')
+      .map(pair => pair.split('=').map(decodeURIComponent))
+  );
+
+  return queryObject;
+}
 
 module.exports = {
   rawGETRequest,
